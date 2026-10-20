@@ -2,7 +2,7 @@ import argparse, json, pathlib, sys, tempfile, unittest
 from unittest.mock import patch
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/"src"))
 from PySide6.QtCore import Qt, QPoint, QPointF
-from PySide6.QtGui import QPalette, QColor, QWheelEvent
+from PySide6.QtGui import QPalette, QColor, QWheelEvent, QPixmap
 from PySide6.QtWidgets import QApplication, QSlider, QLabel, QPushButton, QCheckBox, QComboBox
 from PySide6.QtTest import QTest
 import widget
@@ -55,6 +55,29 @@ class UiTests(unittest.TestCase):
             point=(widget.SETTINGS_RECT.center()*self.w.scale).toPoint()
             QTest.mouseClick(self.w,Qt.MouseButton.LeftButton,pos=point)
             open_settings.assert_called_once()
+        self.w.hide()
+
+    def test_double_click_keeps_bounce_without_opening_details(self):
+        self.w.settings['motion']=False
+        self.w.show(); self.app.processEvents()
+        self.w.animation_timer.stop()
+        self.w.pressed_at=-100
+        def rendered():
+            pixmap=QPixmap(self.w.size()); pixmap.fill(Qt.GlobalColor.transparent)
+            self.w.render(pixmap); return pixmap.toImage()
+        point=QPoint(round(180*self.w.scale),round(270*self.w.scale))
+        with patch.object(widget.time,'monotonic',return_value=self.w.started+2),patch.object(self.w,'show_details') as details,patch.object(self.w,'refresh'):
+            idle=rendered()
+            QTest.mouseDClick(self.w,Qt.MouseButton.LeftButton,pos=point)
+            QTest.mouseRelease(self.w,Qt.MouseButton.LeftButton,pos=point)
+            self.assertNotEqual(idle,rendered())
+            self.assertIsNone(self.w.press_global)
+            self.w.tray_activated(widget.QSystemTrayIcon.ActivationReason.DoubleClick)
+            details.assert_not_called()
+            menu=self.w.make_menu()
+            next(action for action in menu.actions() if action.text()=='额度详情 / 连接状态').trigger()
+            details.assert_called_once()
+            menu.deleteLater()
         self.w.hide()
 
 if __name__=='__main__': unittest.main()

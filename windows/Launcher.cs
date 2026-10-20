@@ -7,7 +7,7 @@ using System.Text;
 using System.Windows.Forms;
 [assembly: AssemblyTitle("Shuangling Quota")]
 [assembly: AssemblyDescription("White dragon Codex quota companion")]
-[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyVersion("1.1.1.0")]
 internal static class Launcher {
     internal static string Quote(string argument) {
         var result = new StringBuilder("\""); int slashes = 0;

@@ -6,14 +6,14 @@
 
 ## 普通用户
 
-从 [GitHub Releases 下载](https://github.com/CAOH1024/guajian/releases/latest) `ShuanglingQuota-1.1.0-Setup.exe`，双击安装。也可下载 `ShuanglingQuota-1.1.0-windows-x64.zip`，**完整解压**后双击 `ShuanglingQuota.exe`。无需另装 Python。便携版不能只复制 EXE，必须保留旁边的 `runtime` 目录。
+从 [GitHub Releases 下载](https://github.com/CAOH1024/guajian/releases/latest) `ShuanglingQuota-1.1.1-Setup.exe`，双击安装。也可下载 `ShuanglingQuota-1.1.1-windows-x64.zip`，**完整解压**后双击 `ShuanglingQuota.exe`。无需另装 Python。便携版不能只复制 EXE，必须保留旁边的 `runtime` 目录。
 
 系统：Windows 10/11 x64、.NET Framework 4.8。还需要安装官方 Codex CLI，并用自己的 ChatGPT 账号完成 `codex login`。找不到 CLI 时，在挂件右键 → 额度详情 → 选择 `codex.exe`。发行包不包含任何账号登录信息。
 
 - **开关跟随**：安装时可勾选，或右键 →「跟随 Codex / ChatGPT 启停」。未选择时只手动运行，不自动改登录启动配置。
 - **自动关闭**：最后一个 Codex/ChatGPT 主窗口关闭或隐藏到托盘后，约5～8秒退出挂件；最小化时保留。如果两个应用都有主窗口，关闭其中一个时继续跟随另一个。轻量监视器留在后台等待再次打开。
 - **大小**：气泡右上角 `···` → 滑块，或在挂件上滚动鼠标滚轮；范围50%～200%，自动保存。
-- **其他交互**：单击角色刷新；单击气泡切换额度窗口；拖动移动；双击详情；右键设置置顶、动画和刷新频率。
+- **其他交互**：单击角色刷新；单击气泡切换额度窗口；拖动移动；快速连点仍有按压回弹，不弹出详情窗口；额度详情、置顶、动画和刷新频率从右键菜单进入。
 - **卸载/移动**：先解除跟随，再删除/移动完整目录。安装版使用用户选择的目录，默认 `%LOCALAPPDATA%/Programs/ShuanglingQuota`，不需要管理员权限。
 
 ## 数据范围与隐私

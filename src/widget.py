@@ -240,7 +240,7 @@ class QuotaWidget(QWidget):
             lines.append('上次成功更新：'+updated)
         if self.error:
             lines.append(self.error)
-        lines += ['单击龙娘刷新 · 单击气泡切换窗口','滚轮调整大小 · 右上角···外观设置','拖动移动 · 右键菜单 · 双击查看额度详情','数据范围：Codex 套餐额度，不代表普通 ChatGPT 各模型聊天限额。']
+        lines += ['单击龙娘刷新 · 单击气泡切换窗口','滚轮调整大小 · 右上角···外观设置','拖动移动 · 右键查看额度详情','数据范围：Codex 套餐额度，不代表普通 ChatGPT 各模型聊天限额。']
         self.setToolTip('\n'.join(lines))
 
     def paintEvent(self,event):
@@ -352,8 +352,9 @@ class QuotaWidget(QWidget):
             self.update()
 
     def mouseDoubleClickEvent(self,event):
-        self.press_global=None
-        self.show_details()
+        # Qt delivers the second press as a double-click event. Keep its bounce
+        # and normal release handling without opening a separate dialog.
+        self.mousePressEvent(event)
 
     def apply_scale(self,scale):
         anchor=self.geometry().bottomRight()
@@ -426,8 +427,6 @@ class QuotaWidget(QWidget):
     def tray_activated(self,reason):
         if reason==QSystemTrayIcon.ActivationReason.Trigger:
             self.setVisible(not self.isVisible())
-        elif reason==QSystemTrayIcon.ActivationReason.DoubleClick:
-            self.show_details()
 
     def show_details(self):
         if self.details_dialog and self.details_dialog.isVisible():
@@ -445,7 +444,7 @@ class QuotaWidget(QWidget):
         layout.addWidget(data)
         def update_detail():
             self.update_tooltip()
-            data.setText(self.toolTip().replace('\n单击龙娘刷新 · 单击气泡切换窗口','').replace('\n拖动移动 · 右键设置 · 双击查看额度详情',''))
+            data.setText(self.toolTip().replace('\n单击龙娘刷新 · 单击气泡切换窗口','').replace('\n拖动移动 · 右键查看额度详情',''))
         update_detail()
         timer=QTimer(dialog); timer.timeout.connect(update_detail); timer.start(1000)
         note=QLabel('连接官方 Codex App Server，沿用本机 Codex CLI 登录。\n若未登录，请在终端运行 codex login 并自行完成登录。\n不读取浏览器 Cookie，不需要 OpenAI API Key。')
