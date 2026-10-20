@@ -28,9 +28,10 @@ on replacement libraries. Build instructions are in README.md and the build scri
 
 ## Python
 
-The current Windows build includes an unmodified CPython 3.9.12 runtime, PSF
-license included. Future builds use the build machine's Python version, recorded
-in BUILD-INFO.json. CPython source: https://www.python.org/downloads/source/
+The Windows build includes an unmodified CPython runtime, with its matching PSF
+license included. The exact Python version is recorded in BUILD-INFO.json.
+GitHub Actions uses Python 3.12; offline builds may use another compatible version.
+CPython source: https://www.python.org/downloads/source/
 
 ## Tooling
 

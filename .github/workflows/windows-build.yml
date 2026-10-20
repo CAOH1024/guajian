@@ -6,6 +6,8 @@ on:
     paths:
       - VERSION
       - .github/workflows/windows-build.yml
+      - scripts/build_release.py
+      - scripts/verify_release.py
 permissions:
   contents: write
 concurrency:

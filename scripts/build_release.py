@@ -102,6 +102,7 @@ def main():
     portable=output/('ShuanglingQuota-'+VERSION+'-windows-x64')
     if portable.exists(): raise SystemExit('Output directory already exists; choose a fresh --output directory.')
     portable.mkdir(); runtime=portable/'runtime'; runtime.mkdir(); (portable/'licenses').mkdir()
+    copy_tree(ROOT/'licenses',portable/'licenses')
     with tempfile.TemporaryDirectory(prefix='shuangling-build-') as temporary:
         work=pathlib.Path(temporary)
         if args.runtime_template: copy_tree(args.runtime_template.resolve(),runtime)
@@ -110,7 +111,7 @@ def main():
         for name in ('launcher.py','widget.py','quota_source.py'): shutil.copy2(ROOT/'src'/name,runtime/name)
         copy_tree(ROOT/'assets',runtime/'assets')
         for name in ('README.md','LICENSE','THIRD_PARTY.md'): shutil.copy2(ROOT/name,portable/name)
-        copy_tree(ROOT/'licenses',portable/'licenses'); copy_tree(ROOT/'docs',portable/'docs')
+        copy_tree(ROOT/'docs',portable/'docs')
         (portable/'assets').mkdir()
         shutil.copy2(ROOT/'assets/LICENSE.md',portable/'assets/LICENSE.md')
         for package in ('PySide6','shiboken6'):

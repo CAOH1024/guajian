@@ -10,7 +10,14 @@ with tempfile.TemporaryDirectory(prefix='shuangling-verify-') as temporary:
     for item in manifest['files']:
         assert hashlib.sha256((installed/item['path']).read_bytes()).hexdigest()==item['sha256'],item['path']
     run([installed/'ShuanglingQuota.exe','--check'])
-    run([installed/'ShuanglingQuota.exe','--preview',ROOT/'docs/example-quota.json','--render-preview',work/'preview.png'])
+    try:
+        run([installed/'ShuanglingQuota.exe','--preview',ROOT/'docs/example-quota.json','--render-preview',work/'preview.png'])
+    except subprocess.CalledProcessError:
+        log=installed/'runtime/state/startup-error.log'
+        if log.exists(): print(log.read_text(encoding='utf-8'),flush=True)
+        diagnostic=subprocess.run([str(installed/'runtime/python.exe'),str(installed/'runtime/launcher.py'),'--preview',str(ROOT/'docs/example-quota.json'),'--render-preview',str(work/'preview.png')],capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=20)
+        print('Portable Python diagnostic:',diagnostic.returncode,diagnostic.stdout,diagnostic.stderr,flush=True)
+        raise
     assert (work/'preview.png').stat().st_size>1000
     assert not (installed/'runtime/state').exists()
 for path in dist.glob('*.zip'):
