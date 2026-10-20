@@ -59,6 +59,13 @@ coll=COLLECT(exe,a.binaries,a.datas,name='collector')
     abi='python'+str(sys.version_info.major)+str(sys.version_info.minor)
     for name in ('python.exe','pythonw.exe',abi+'.dll'):
         shutil.copy2(base/name,target/name)
+    # ABI3 extensions (Shiboken/PySide) load python3.dll through the Windows
+    # loader, not sys.path. Keep its matching forwarding DLL next to pythonw.
+    if (base/'python3.dll').exists(): shutil.copy2(base/'python3.dll',target/'python3.dll')
+    for name in ('vcruntime140.dll','vcruntime140_1.dll','msvcp140.dll','msvcp140_1.dll','msvcp140_2.dll'):
+        source=qt/name
+        if not source.exists(): source=base/name
+        if source.exists(): shutil.copy2(source,target/name)
     with zipfile.ZipFile(target/'stdlib.zip','w',zipfile.ZIP_DEFLATED,compresslevel=6) as archive:
         for directory,children,files in os.walk(base/'Lib'):
             children[:]=[name for name in children if name not in SKIP|{'site-packages','test','tests','idlelib','tkinter','turtledemo','ensurepip'}]
