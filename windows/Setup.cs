@@ -8,7 +8,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 [assembly: AssemblyTitle("Shuangling Quota Setup")]
-[assembly: AssemblyVersion("1.1.1.0")]
+[assembly: AssemblyVersion("1.2.0.0")]
 internal sealed class Setup : Form {
     readonly TextBox destination = new TextBox();
     readonly CheckBox shortcut = new CheckBox { Text = "创建桌面快捷方式", Checked = true, AutoSize = true };
@@ -16,7 +16,7 @@ internal sealed class Setup : Form {
     readonly Button install = new Button { Text = "安装并启动", AutoSize = true };
     readonly Label status = new Label { Text = "无需管理员权限。需要本机 Codex CLI 已登录。", AutoSize = true };
     Setup() {
-        Text = "霜铃 · Codex 额度挂件 1.1.1";
+        Text = "霜铃 · Codex 额度挂件 1.2.0";
         Font = new Font("Microsoft YaHei UI", 9F); BackColor = Color.FromArgb(255,253,253);
         ForeColor = Color.FromArgb(65,55,79); ClientSize = new Size(570,310);
         FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; StartPosition = FormStartPosition.CenterScreen;

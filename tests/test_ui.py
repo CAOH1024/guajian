@@ -80,4 +80,19 @@ class UiTests(unittest.TestCase):
             menu.deleteLater()
         self.w.hide()
 
+    def test_notice_bubble_prioritizes_wait_and_returns_to_quota(self):
+        import time
+        self.w.args.preview=None
+        self.w.notifications.emit('question','选择哪种方案？',session='test')
+        now=time.time()
+        self.w.hourly_notice={'kind':'hourly','title':'现在是 10:00','summary':'整点报时','expires_at':now+10}
+        self.w.poll_notices()
+        self.assertEqual(self.w.notice['kind'],'question')
+        pixmap=QPixmap(self.w.size()); pixmap.fill(Qt.GlobalColor.transparent)
+        self.w.render(pixmap)
+        self.w.notifications.clear('test')
+        self.w.poll_notices(); self.assertEqual(self.w.notice['kind'],'hourly')
+        self.w.hourly_notice['expires_at']=now-1
+        self.w.poll_notices(); self.assertIsNone(self.w.notice)
+
 if __name__=='__main__': unittest.main()

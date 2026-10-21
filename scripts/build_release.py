@@ -115,7 +115,7 @@ def main():
         if args.runtime_template: copy_tree(args.runtime_template.resolve(),runtime)
         else: collect_runtime(runtime,work)
         trim_plugins(runtime)
-        for name in ('launcher.py','widget.py','quota_source.py'): shutil.copy2(ROOT/'src'/name,runtime/name)
+        for path in (ROOT/'src').glob('*.py'): shutil.copy2(path,runtime/path.name)
         copy_tree(ROOT/'assets',runtime/'assets')
         for name in ('README.md','LICENSE','THIRD_PARTY.md'): shutil.copy2(ROOT/name,portable/name)
         copy_tree(ROOT/'docs',portable/'docs')

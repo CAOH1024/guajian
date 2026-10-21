@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication, QWidget, QMenu, QSystemTrayIcon, QDi
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtCore import QUrl
 from quota_source import CodexClient, QuotaError
+from notifications import NotificationStore, HourlyChime, PRIORITY, short_text
 
 APP_TITLE='霜铃 · Codex 额度挂件'
 BASE_W, BASE_H = 300, 400
@@ -96,7 +97,7 @@ class QuotaWidget(QWidget):
     def __init__(self, args):
         super().__init__()
         self.args=args
-        self.settings={'scale':0.85,'topmost':True,'snap':True,'motion':True,'refresh_seconds':60,'focus':0}
+        self.settings={'scale':0.85,'topmost':True,'snap':True,'motion':True,'refresh_seconds':60,'focus':0,'codex_alerts':True,'hourly_chime':True}
         try:
             self.settings.update(json.loads((STATE_DIR/'settings.json').read_text(encoding='utf-8')))
         except (OSError,ValueError,TypeError):
@@ -115,6 +116,10 @@ class QuotaWidget(QWidget):
         self.dragging=False
         self.left_docked=False
         self.details_dialog=None
+        self.notifications=NotificationStore(STATE_DIR/'notifications')
+        self.hourly_chime=HourlyChime()
+        self.hourly_notice=None
+        self.notice=None
         self.setWindowTitle(APP_TITLE)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint|Qt.WindowType.Tool|Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -140,6 +145,9 @@ class QuotaWidget(QWidget):
         self.clock_timer=QTimer(self)
         self.clock_timer.timeout.connect(self.update_tooltip)
         self.clock_timer.start(1000)
+        self.notice_timer=QTimer(self)
+        self.notice_timer.timeout.connect(self.poll_notices)
+        self.notice_timer.start(500)
         self.tray=QSystemTrayIcon(self.icon,self)
         self.tray.setToolTip(APP_TITLE)
         self.tray.activated.connect(self.tray_activated)
@@ -231,6 +239,8 @@ class QuotaWidget(QWidget):
 
     def update_tooltip(self):
         lines=[APP_TITLE]
+        if self.notice:
+            lines += [self.notice['title'],self.notice.get('summary','')]
         if self.snapshot:
             lines.append('套餐：'+str(self.snapshot.get('plan') or '未知'))
             for w in self.snapshot['windows']:
@@ -242,6 +252,18 @@ class QuotaWidget(QWidget):
             lines.append(self.error)
         lines += ['单击龙娘刷新 · 单击气泡切换窗口','滚轮调整大小 · 右上角···外观设置','拖动移动 · 右键查看额度详情','数据范围：Codex 套餐额度，不代表普通 ChatGPT 各模型聊天限额。']
         self.setToolTip('\n'.join(lines))
+
+    def poll_notices(self):
+        if self.args.preview: return
+        now=time.time()
+        hourly=self.hourly_chime.poll(now,self.settings.get('hourly_chime',True))
+        if hourly: self.hourly_notice=hourly
+        if self.hourly_notice and self.hourly_notice['expires_at']<=now: self.hourly_notice=None
+        codex=self.notifications.current(now) if self.settings.get('codex_alerts',True) else None
+        choices=[item for item in (codex,self.hourly_notice if self.settings.get('hourly_chime',True) else None) if item]
+        notice=max(choices,key=lambda item:PRIORITY[item['kind']],default=None)
+        if notice!=self.notice:
+            self.notice=notice; self.update_tooltip(); self.update()
 
     def paintEvent(self,event):
         p=QPainter(self)
@@ -282,10 +304,14 @@ class QuotaWidget(QWidget):
         p.drawEllipse(QRectF(83,173,16,11))
         p.drawEllipse(QRectF(109,190,9,7))
         plan=(str(self.snapshot.get('plan') or '').upper() if self.snapshot else '')
-        self.text(p,QRectF(28,16,191,25),'CODEX'+(' · '+plan if plan else ' 额度'),14,'#59477f',True)
+        heading='CODEX 提醒' if self.notice else 'CODEX'+(' · '+plan if plan else ' 额度')
+        self.text(p,QRectF(28,16,191,25),heading,14,'#59477f',True)
         p.setPen(Qt.PenStyle.NoPen); p.setBrush(QColor('#eee7f8'))
         p.drawRoundedRect(SETTINGS_RECT,8,8)
         self.text(p,SETTINGS_RECT,'···',18,'#59477f',True)
+        if self.notice:
+            self.draw_notice(p)
+            return
         w=self.current_window()
         if w:
             value=self.display_value if self.display_value is not None else w['remaining_percent']
@@ -312,6 +338,19 @@ class QuotaWidget(QWidget):
         p.setBrush(QColor(dot))
         p.drawEllipse(QRectF(62,153,7,7))
         self.text(p,QRectF(74,146,131,22),status,10,'#7b6a96',True)
+
+    def draw_notice(self,p):
+        notice=self.notice; pending=notice['kind'] in ('question','permission')
+        color='#8c5939' if pending else '#59477f'
+        self.text(p,QRectF(23,44,223,34),notice['title'],22,color,True)
+        flags=int(Qt.AlignmentFlag.AlignCenter)|int(Qt.TextFlag.TextWordWrap)
+        self.text(p,QRectF(28,80,213,43),short_text(notice.get('summary',''),38),12,'#51435f',alignment=flags)
+        windows=self.snapshot.get('windows',[]) if self.snapshot else []
+        quota=' · '.join(f"{window['label']} {window['remaining_percent']:g}%" for window in windows[:2])
+        self.text(p,QRectF(23,123,223,20),quota or '额度仍会自动刷新',10,'#6a587e')
+        p.setPen(Qt.PenStyle.NoPen); p.setBrush(QColor('#f4e4cb' if pending else '#e9e1f8'))
+        p.drawRoundedRect(QRectF(52,145,163,24),12,12)
+        self.text(p,QRectF(55,146,157,22),'回 Codex 查看并处理' if pending else '稍后自动恢复额度',10,color,True)
 
     def mousePressEvent(self,event):
         if event.button()==Qt.MouseButton.LeftButton:
@@ -390,6 +429,8 @@ class QuotaWidget(QWidget):
         menu.addAction('刷新额度',self.refresh)
         menu.addAction('额度详情 / 连接状态',self.show_details)
         menu.addAction('外观设置',self.show_settings)
+        menu.addAction('接入 Codex 气泡提醒…',self.connect_codex_alerts)
+        menu.addAction('解除 Codex 提醒接入',self.disconnect_codex_alerts)
         from launcher import autorun_enabled
         follow=menu.addAction('跟随 Codex / ChatGPT 启停')
         follow.setCheckable(True); follow.setChecked(autorun_enabled())
@@ -417,6 +458,26 @@ class QuotaWidget(QWidget):
         from launcher import install_autostart,remove_autostart
         if enabled: install_autostart()
         else: remove_autostart()
+
+    def connect_codex_alerts(self):
+        from codex_hooks import install_hooks
+        try:
+            target=install_hooks()
+        except (OSError,ValueError) as exc:
+            QMessageBox.warning(self,'提醒接入失败',str(exc)); return
+        QMessageBox.information(self,'Codex 提醒已配置',
+            '已配置本地提醒 Hook：\n'+str(target)+'\n\n请在 Codex CLI 中输入 /hooks，审阅并信任“霜铃气泡提醒（仅通知）”。\nCodex 信任后才会发送询问、权限和结束事件；需要时重新打开会话。\n提醒不会批准权限或替你回答问题。')
+
+    def disconnect_codex_alerts(self):
+        from codex_hooks import remove_hooks
+        try: remove_hooks()
+        except (OSError,ValueError) as exc:
+            QMessageBox.warning(self,'解除提醒失败',str(exc)); return
+        for path,_ in self.notifications.entries():
+            try: path.unlink(missing_ok=True)
+            except OSError: pass
+        self.poll_notices()
+        QMessageBox.information(self,'提醒已解除','已移除霜铃自己的 Codex Hook，保留其他规则。整点报时仍可在外观设置中开关。')
 
     def reset_position(self):
         self.settings.pop('x',None); self.settings.pop('y',None)
@@ -481,13 +542,15 @@ class QuotaWidget(QWidget):
         slider.valueChanged.connect(resize)
         snap=QCheckBox('靠近屏幕边缘时吸附'); snap.setChecked(self.settings['snap']); layout.addWidget(snap)
         motion=QCheckBox('轻微浮动和按压回弹'); motion.setChecked(self.settings['motion']); layout.addWidget(motion)
+        alerts=QCheckBox('在气泡显示 Codex 询问、权限与本轮结束提醒'); alerts.setChecked(self.settings.get('codex_alerts',True)); layout.addWidget(alerts)
+        hourly=QCheckBox('整点在气泡报时（无声音）'); hourly.setChecked(self.settings.get('hourly_chime',True)); layout.addWidget(hourly)
         layout.addWidget(QLabel('自动刷新频率'))
         interval=QComboBox()
         for seconds in (30,60,120,300): interval.addItem(f'{seconds} 秒',seconds)
         index=interval.findData(self.settings['refresh_seconds']); interval.setCurrentIndex(max(0,index)); layout.addWidget(interval)
         save=QPushButton('保存'); layout.addWidget(save)
         def done():
-            self.settings.update({'snap':snap.isChecked(),'motion':motion.isChecked(),'refresh_seconds':interval.currentData()})
+            self.settings.update({'snap':snap.isChecked(),'motion':motion.isChecked(),'refresh_seconds':interval.currentData(),'codex_alerts':alerts.isChecked(),'hourly_chime':hourly.isChecked()})
             self.refresh_timer.start(int(interval.currentData())*1000)
             self.save_settings(); dialog.accept()
         save.clicked.connect(done)
